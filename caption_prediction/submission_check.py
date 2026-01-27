@@ -80,7 +80,7 @@ def check_submission(
                     raise SubmissionFormatError(
                         f"Row {i}: Expected exactly 2 columns. Found: {row}"
                     )
-                image_id, caption = row[0], row[1]
+                image_id, _caption = row[0], row[1]
 
                 # Leading/trailing whitespace check
                 if image_id != image_id.strip():

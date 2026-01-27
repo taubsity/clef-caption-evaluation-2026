@@ -66,7 +66,7 @@ def main():
     )
     result = evaluator._evaluate({"submission_file_path": submission_file_path})
     print(result)
-    
+
     # Write scores.json for AI4MediaBench platform
     scores_output_path = os.path.join("/app/output", "scores.json")
     os.makedirs(os.path.dirname(scores_output_path), exist_ok=True)

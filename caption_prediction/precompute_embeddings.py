@@ -62,7 +62,9 @@ def encode_dataset_images(
     image_ids = load_image_ids(dataset_type)
     embeddings = {}
 
-    for start in tqdm(range(0, len(image_ids), batch_size), desc=f"Encoding {dataset_type}"):
+    for start in tqdm(
+        range(0, len(image_ids), batch_size), desc=f"Encoding {dataset_type}"
+    ):
         batch_ids = image_ids[start : start + batch_size]
         batch_paths = [
             os.path.join(image_dir, image_id + ".jpg") for image_id in batch_ids
@@ -84,7 +86,6 @@ def save_embeddings(dataset_type: str, embeddings):
 
 
 def main():
-    import argparse
 
     parser = argparse.ArgumentParser(
         description="Precompute image embeddings for a dataset."

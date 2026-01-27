@@ -59,7 +59,7 @@ def main():
     result = caption_evaluator._evaluate(_client_payload, _context)
     print(f"\nEvaluation complete for {dataset_type} dataset!")
     print(result)
-    
+
     # Write scores.json for AI4MediaBench platform
     scores_output_path = os.path.join("/app/output", "scores.json")
     # create output directory if it doesn't exist
