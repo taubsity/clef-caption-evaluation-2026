@@ -1,8 +1,8 @@
 # Setup
 
-You need docker to run the evaluations with GPU support for caption prediction evaluation. Please refer to the last section of this README to see submission format instructions.
+You need docker to run the evaluations with GPU support for caption prediction evaluation. Please refer to the last section of this README to see submission format instructions and run submission checks locally (see below).
 
-## Caption Prediction Evaluation
+# Caption Prediction Evaluation
 
 1. Copy `captions.csv` and `images` dir into `caption_prediction/data/valid`.
    
@@ -45,7 +45,7 @@ You need docker to run the evaluations with GPU support for caption prediction e
     - Quoting: Captions containing commas must be enclosed in double quotes.
     - Edge cases: Full error trace is printed to help diagnose parsing issues.
 
-## Concept Detection Evaluation
+# Concept Detection Evaluation
 
 1. Copy `concepts.csv` and `concepts_manual.csv` into `concept_detection/data/valid`.
 
@@ -86,7 +86,7 @@ You need docker to run the evaluations with GPU support for caption prediction e
   - Format: Each CUI must match C followed by digits (e.g., C0040405).
   - Edge cases: Full error trace is printed to help diagnose parsing issues.
 
-### Run submission checks locally (no Docker)
+# Run submission checks locally (no Docker)
 
 Use the built-in checkers if you just want to validate formatting:
 
@@ -141,7 +141,7 @@ This is how the file structure would look like with UMLS model and submission.cs
     └── submission.csv
 ```
 
-# Submission Format Instructions
+## Submission Format Instructions
 
 Please note the following when using the scripts or submitting to the ai4mediabench website.
 
