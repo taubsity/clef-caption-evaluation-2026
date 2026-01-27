@@ -8,6 +8,8 @@ ENV DEBIAN_FRONTEND=noninteractive
 # Set working directory inside the container
 WORKDIR /app
 
+ENTRYPOINT ["python", "run_evaluation.py"]
+
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
     git \
@@ -20,9 +22,12 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Copy runner and submission checker
+COPY run_evaluation.py .
+COPY submission_check.py .
+
 # Copy the evaluation script
 COPY evaluator.py .
 
 # Copy data files (ground truth)
-COPY data/valid/concepts.csv data/valid/concepts.csv
-COPY data/valid/concepts_manual.csv data/valid/concepts_manual.csv
+COPY data/ data/

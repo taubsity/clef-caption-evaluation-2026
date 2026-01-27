@@ -10,13 +10,13 @@ You need docker to run the evaluations with GPU support for caption prediction e
 
 3. Copy `data` dir into `caption_prediction`.
    
-3. Choose device (GPU) or put all and build the `caption_prediction_evaluator` docker image. 
+3. Choose device (GPU) or use all and build the `caption_prediction_evaluator` docker image. This may take a while, as image embeddings will be precomputed.
 
     ```sh
     cd caption_prediction
     CUDA_VISIBLE_DEVICES=4 docker build --no-cache -t caption_prediction_evaluator .
     ```
-4. Go to dir with your `submission.csv`, choose device (GPU) or put all and run the evaluation.
+4. Go to dir with your `submission.csv`, choose device (GPU) or put all and run the evaluation. The container will first run a strict submission format pre-check and print clear errors if any issues are found.
     ```sh
     docker run \
       --gpus '"device=4"' \
@@ -35,6 +35,16 @@ You need docker to run the evaluations with GPU support for caption prediction e
     ImageCLEFmedical_Caption_2025_valid_0,"Illustration of the original image with an ROI.T: Tumor."
     ```
 
+    Common pre-check errors and fixes:
+    - Encoding: Ensure the file is saved as UTF-8 (no BOM).
+    - Header: Must be exactly two columns: ID,Caption.
+    - Blank lines: Remove any empty trailing or intermediate lines.
+    - Whitespace: Trim leading/trailing spaces in IDs and captions.
+    - Duplicates: Each ID must appear only once.
+    - ID set: Use only IDs from the official set; include all official IDs.
+    - Quoting: Captions containing commas must be enclosed in double quotes.
+    - Edge cases: Full error trace is printed to help diagnose parsing issues.
+
 ## Concept Detection Evaluation
 
 1. Copy `concepts.csv` and `concepts_manual.csv` into `concept_detection/data/valid`.
@@ -46,14 +56,14 @@ You need docker to run the evaluations with GPU support for caption prediction e
     docker build -t concept_detection_evaluator .
     ```
 
-3. Place your `submission.csv` in `concept_detection` dir and run evaluation.
+3. Go to dir with your `submission.csv` and run evaluation. The container will first run a strict submission format pre-check and print clear errors if any issues are found.
 
     ```sh
     docker run \
       --rm \
-      -v $(pwd)/johanna.csv:/app/submission.csv \
+      -v $(pwd)/submission.csv:/app/submission.csv \
       concept_detection_evaluator \
-      python -c "from evaluator import ConceptEvaluator; evaluator = ConceptEvaluator(); result = evaluator._evaluate({'submission_file_path': '/app/submission.csv'}); print(result)"
+      valid
     ```
     Submission format: `submission.csv` with the two columns **ID** and **CUIs** with semicolon seperated CUIs. 
 
@@ -64,6 +74,41 @@ You need docker to run the evaluations with GPU support for caption prediction e
    ID,CUIs
    ImageCLEFmedical_Caption_2024_valid_000001,C0040405;C0856747
    ```
+
+  Common pre-check errors and fixes:
+  - Encoding: Ensure the file is saved as UTF-8 (no BOM).
+  - Header: Must be exactly two columns: ID,CUIs.
+  - Blank lines: Remove any empty trailing or intermediate lines.
+  - Whitespace: Trim leading/trailing spaces in IDs and CUIs.
+  - Duplicates: Each ID must appear only once; no duplicate CUIs per ID.
+  - ID set: Use only IDs from the official set; include all official IDs.
+  - Separator: CUIs must be ';' separated with no empty entries.
+  - Format: Each CUI must match C followed by digits (e.g., C0040405).
+  - Edge cases: Full error trace is printed to help diagnose parsing issues.
+
+### Run submission checks locally (no Docker)
+
+Use the built-in checkers if you just want to validate formatting:
+
+```sh
+python caption_prediction/submission_check.py \
+  --submission /path/to/submission.csv \
+  --dataset valid \
+  --ground-truth caption_prediction/data/valid/captions.csv
+```
+
+```sh
+python concept_detection/submission_check.py \
+  --submission /path/to/submission.csv \
+  --dataset valid \
+  --primary-gt concept_detection/data/valid/concepts.csv \
+  --secondary-gt concept_detection/data/valid/concepts_manual.csv
+```
+
+Arguments:
+- `--submission` (required): path to your submission.csv
+- `--dataset` (optional): valid|test (default: valid) to auto-pick default ground truth paths
+- `--ground-truth`, `--primary-gt`, `--secondary-gt` (optional): override ground truth locations if needed
 
 ## File Structure
 

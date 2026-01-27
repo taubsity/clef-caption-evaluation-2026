@@ -11,6 +11,7 @@ WORKDIR /app
 # Copy the evaluation scripts into the container
 COPY run_evaluation.py .
 COPY precompute_embeddings.py .
+COPY submission_check.py .
 
 # Set the entry point to the evaluation script
 ENTRYPOINT ["python", "run_evaluation.py"]
