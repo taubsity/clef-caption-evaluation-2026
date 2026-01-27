@@ -86,7 +86,6 @@ def save_embeddings(dataset_type: str, embeddings):
 
 
 def main():
-
     parser = argparse.ArgumentParser(
         description="Precompute image embeddings for a dataset."
     )

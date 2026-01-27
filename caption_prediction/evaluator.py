@@ -40,19 +40,15 @@ class CaptionEvaluator:
         self.ground_truth_path = ground_truth_path
         self.dataset_type = os.path.basename(os.path.dirname(self.ground_truth_path))
         self.gt = self.load_gt()
+        if torch.cuda.is_available():
+            self.device = "cuda"
+        else:
+            self.device = "cpu"
+        self.text_batch_size = int(os.environ.get("TEXT_BATCH_SIZE", "8"))
         print("Loading ROUGE from HuggingFace")
         self.scorers = {
             "rouge": (evaluate.load("rouge"),),
         }
-        idf_sentences = [
-            self.preprocess_caption(caption) for caption in self.gt.values()
-        ]
-        print("Loading BERTScore")
-        self.bert_scorer = BERTScorer(
-            model_type="microsoft/deberta-xlarge-mnli",
-            idf=True,
-            idf_sents=idf_sentences,
-        )
         print("Loading MedCatScorer")
         self.medcat_scorer = MedCatScorer(
             model_path=os.path.join(
@@ -64,43 +60,12 @@ class CaptionEvaluator:
                 ][0],
             )
         )
-        print("Loading AlignScore")
-        self.align_scorer = AlignScore(
-            model="roberta-large",
-            batch_size=32,
-            device="cuda:0",
-            ckpt_path=os.path.join(
-                current_dir, "models/AlignScore/AlignScore-base.ckpt"
-            ),
-            evaluation_mode="nli_sp",
-            verbose=False,
-        )
-        print("Loading MedImageInsight")
-        device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.image_similarity_scorer = MedImageInsight(
-            model_dir=os.path.join(current_dir, "MedImageInsights/2024.09.27"),
-            vision_model_name="medimageinsigt-v1.0.0.pt",
-            language_model_name="language_model.pth",
-        )
-        self.image_similarity_scorer.load_model()
-        if hasattr(self.image_similarity_scorer, "device"):
-            self.image_similarity_scorer.device = device
-        if hasattr(self.image_similarity_scorer, "to"):
-            try:
-                self.image_similarity_scorer.to(device)
-            except Exception:
-                pass
-        print(f"MedImageInsight device: {device}")
+        self.bert_scorer = None
+        self.bleurt_model = None
+        self.bleurt_tokenizer = None
+        self.bleurt_config = None
+        self.image_similarity_scorer = None
         self._image_embeddings = None
-        self._dummy_image_b64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII="
-        print("Loading BLEURT")
-        self.bleurt_config = BleurtConfig.from_pretrained("lucadiliello/BLEURT-20-D12")
-        self.bleurt_model = BleurtForSequenceClassification.from_pretrained(
-            "lucadiliello/BLEURT-20-D12"
-        )
-        self.bleurt_tokenizer = BleurtTokenizer.from_pretrained(
-            "lucadiliello/BLEURT-20-D12"
-        )
 
     def _evaluate(self, client_payload, _context={}):
         print("Evaluating...")
@@ -231,6 +196,16 @@ class CaptionEvaluator:
 
     def compute_bertscore(self, candidate_pairs):
         print("Computing BERTScore")
+        if self.bert_scorer is None:
+            idf_sentences = [
+                self.preprocess_caption(caption) for caption in self.gt.values()
+            ]
+            self.bert_scorer = BERTScorer(
+                model_type="microsoft/deberta-xlarge-mnli",
+                idf=True,
+                idf_sents=idf_sentences,
+                device=self.device,
+            )
         bert_scores = [
             (
                 self.bert_scorer.score(
@@ -242,6 +217,9 @@ class CaptionEvaluator:
             )
             for image_key in candidate_pairs
         ]
+        if self.device == "cuda":
+            self.bert_scorer = None
+            self._free_cuda()
         return np.mean(bert_scores)
 
     def compute_rouge(self, candidate_pairs):
@@ -263,6 +241,16 @@ class CaptionEvaluator:
 
     def compute_alignscore(self, candidate_pairs):
         print("Computing Alignscore")
+        self.align_scorer = AlignScore(
+            model="roberta-large",
+            batch_size=32,
+            device=self.device,
+            ckpt_path=os.path.join(
+                current_dir, "models/AlignScore/AlignScore-base.ckpt"
+            ),
+            evaluation_mode="nli_sp",
+            verbose=False,
+        )
         align_scores = [
             (
                 self.align_scorer.score(
@@ -273,6 +261,9 @@ class CaptionEvaluator:
             )
             for image_key in candidate_pairs
         ]
+        if self.device == "cuda":
+            self.align_scorer = None
+            self._free_cuda()
         return np.mean(align_scores)
 
     def compute_medcats(self, candidate_pairs):
@@ -303,17 +294,29 @@ class CaptionEvaluator:
 
     def _encode_texts(self, texts):
         scorer = self.image_similarity_scorer
-        outputs = scorer.encode(texts=texts)
-        if isinstance(outputs, dict) and "text_embeddings" in outputs:
-            embeddings = outputs["text_embeddings"]
-        else:
-            embeddings = outputs
-        if hasattr(embeddings, "cpu"):
-            return embeddings.cpu().numpy()
-        return np.array(embeddings)
+        batch_size = max(1, self.text_batch_size)
+        encoded_chunks = []
+        for start in tqdm(
+            range(0, len(texts), batch_size), desc="Encode captions", unit="batch"
+        ):
+            batch = texts[start : start + batch_size]
+            outputs = scorer.encode(texts=batch)
+            if isinstance(outputs, dict) and "text_embeddings" in outputs:
+                embeddings = outputs["text_embeddings"]
+            else:
+                embeddings = outputs
+            if hasattr(embeddings, "detach"):
+                embeddings = embeddings.detach()
+            if hasattr(embeddings, "cpu"):
+                embeddings = embeddings.cpu().numpy()
+            encoded_chunks.append(np.array(embeddings))
+            if self.device == "cuda":
+                self._free_cuda()
+        return np.concatenate(encoded_chunks, axis=0)
 
     def compute_similarity(self, candidate_pairs):
         print("Computing MedImageInsights Similarity")
+        self._load_image_similarity_scorer()
         self._ensure_image_embeddings()
 
         missing = [
@@ -347,10 +350,45 @@ class CaptionEvaluator:
                 print(e)
                 score = 1
             sim_scores.append(score)
+        if self.device == "cuda":
+            self.image_similarity_scorer = None
+            self._free_cuda()
         return np.mean(sim_scores)
+
+    def _load_image_similarity_scorer(self):
+        if self.image_similarity_scorer is not None:
+            return
+        device = self.device
+        print("Loading MedImageInsight")
+        scorer = MedImageInsight(
+            model_dir=os.path.join(current_dir, "MedImageInsights/2024.09.27"),
+            vision_model_name="medimageinsigt-v1.0.0.pt",
+            language_model_name="language_model.pth",
+        )
+        scorer.load_model()
+        if hasattr(scorer, "device"):
+            scorer.device = device
+        if hasattr(scorer, "to"):
+            try:
+                scorer.to(device)
+            except Exception:
+                pass
+        print(f"MedImageInsight device: {device}")
+        self.image_similarity_scorer = scorer
 
     def compute_bleurt(self, candidate_pairs):
         print("Computing BLEURT")
+        if self.bleurt_model is None:
+            self.bleurt_config = BleurtConfig.from_pretrained(
+                "lucadiliello/BLEURT-20-D12"
+            )
+            self.bleurt_model = BleurtForSequenceClassification.from_pretrained(
+                "lucadiliello/BLEURT-20-D12"
+            )
+            self.bleurt_tokenizer = BleurtTokenizer.from_pretrained(
+                "lucadiliello/BLEURT-20-D12"
+            )
+            self.bleurt_model.to(self.device)
         references = [
             self.preprocess_caption(self.gt[image_key]) for image_key in candidate_pairs
         ]
@@ -368,8 +406,18 @@ class CaptionEvaluator:
                 truncation=True,
                 max_length=512,
             )
+            inputs = {k: v.to(self.device) for k, v in inputs.items()}
             res = self.bleurt_model(**inputs).logits.flatten().tolist()
+        if self.device == "cuda":
+            self.bleurt_model = None
+            self.bleurt_tokenizer = None
+            self.bleurt_config = None
+            self._free_cuda()
         return np.mean(res)
+
+    def _free_cuda(self):
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
 
 
 if __name__ == "__main__":
