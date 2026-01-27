@@ -1,4 +1,18 @@
-# Setup
+
+# ImageCLEFmedical Caption Prediction & Concept Detection 2026
+
+Official evaluation and submission checking scripts for the [ImageCLEFmedical 2026 Caption Prediction and Concept Detection Challenge](https://www.imageclef.org/2026/medical/caption).
+
+## Introduction
+
+This repository provides tools to validate and evaluate your submissions for the two ImageCLEFmedical 2026 tasks:
+
+- **Caption Prediction:** Generate descriptive captions for medical images.
+- **Concept Detection:** Identify relevant UMLS concepts (CUIs) for each image.
+
+You can use these scripts to check your submission format and run local evaluations before submitting to the AI4MediaBench platform. Passing the pre-check is required for a valid submission.
+
+## Setup
 
 You need docker to run the evaluations with GPU support for caption prediction evaluation. Please refer to the last section of this README to see submission format instructions and run submission checks locally (see below).
 
@@ -16,7 +30,7 @@ You need docker to run the evaluations with GPU support for caption prediction e
     cd caption_prediction
     CUDA_VISIBLE_DEVICES=4 docker build --no-cache -t caption_prediction_evaluator .
     ```
-4. Go to dir with your `submission.csv`, choose device (GPU) or put all and run the evaluation. The container will first run a strict submission format pre-check and print clear errors if any issues are found.
+4. Go to dir with your `submission.csv`, choose device (GPU) or put all and run the evaluation. The container will first run a strict submission format pre-check and print errors if any issues are found.
     ```sh
     docker run \
       --gpus '"device=4"' \
@@ -39,8 +53,8 @@ You need docker to run the evaluations with GPU support for caption prediction e
     - Encoding: Ensure the file is saved as UTF-8 (no BOM).
     - Header: Must be exactly two columns: ID,Caption.
     - Blank lines: Remove any empty trailing or intermediate lines.
-    - Whitespace: Trim leading/trailing spaces in IDs and captions.
     - Duplicates: Each ID must appear only once.
+    - Order: IDs must follow the exact order of the ground truth file.
     - ID set: Use only IDs from the official set; include all official IDs.
     - Quoting: Captions containing commas must be enclosed in double quotes.
     - Edge cases: Full error trace is printed to help diagnose parsing issues.
@@ -53,10 +67,10 @@ You need docker to run the evaluations with GPU support for caption prediction e
 
     ```sh
     cd concept_detection
-    docker build -t concept_detection_evaluator .
+    docker build --no-cache -t concept_detection_evaluator .
     ```
 
-3. Go to dir with your `submission.csv` and run evaluation. The container will first run a strict submission format pre-check and print clear errors if any issues are found.
+3. Go to dir with your `submission.csv` and run evaluation. The container will first run a strict submission format pre-check and print errors if any issues are found.
 
     ```sh
     docker run \
@@ -81,12 +95,14 @@ You need docker to run the evaluations with GPU support for caption prediction e
   - Blank lines: Remove any empty trailing or intermediate lines.
   - Whitespace: Trim leading/trailing spaces in IDs and CUIs.
   - Duplicates: Each ID must appear only once; no duplicate CUIs per ID.
+  - Order: IDs must follow the exact order of the ground truth file.
   - ID set: Use only IDs from the official set; include all official IDs.
-  - Separator: CUIs must be ';' separated with no empty entries.
-  - Format: Each CUI must match C followed by digits (e.g., C0040405).
+  - Separator: CUIs must be ';' separated with no empty entries when provided (empty CUI lists are allowed).
+  - Format: Each CUI must match C followed by digits (e.g., C0040405) when provided.
   - Edge cases: Full error trace is printed to help diagnose parsing issues.
 
-# Run submission checks locally (no Docker)
+
+# Run Submission Checks Locally (No Docker)
 
 Use the built-in checkers if you just want to validate formatting:
 
@@ -109,6 +125,14 @@ Arguments:
 - `--submission` (required): path to your submission.csv
 - `--dataset` (optional): valid|test (default: valid) to auto-pick default ground truth paths
 - `--ground-truth`, `--primary-gt`, `--secondary-gt` (optional): override ground truth locations if needed
+
+
+## Notes & Troubleshooting
+
+- **Docker expects your `submission.csv` in the current directory when running the evaluation container.**
+- The evaluation scripts do not modify your submission file.
+- If you encounter GPU or file mounting issues, check your Docker version and permissions.
+- If you see format errors, use the local checker scripts to debug before submitting.
 
 ## File Structure
 

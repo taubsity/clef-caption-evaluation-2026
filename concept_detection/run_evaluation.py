@@ -65,3 +65,7 @@ def main():
     )
     result = evaluator._evaluate({"submission_file_path": submission_file_path})
     print(result)
+
+
+if __name__ == "__main__":
+    main()

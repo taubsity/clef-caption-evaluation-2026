@@ -76,11 +76,21 @@ class CaptionEvaluator:
             verbose=False,
         )
         print("Loading MedImageInsight")
+        device = "cuda" if torch.cuda.is_available() else "cpu"
         self.image_similarity_scorer = MedImageInsight(
             model_dir=os.path.join(current_dir, "MedImageInsights/2024.09.27"),
             vision_model_name="medimageinsigt-v1.0.0.pt",
             language_model_name="language_model.pth",
         )
+        self.image_similarity_scorer.load_model()
+        if hasattr(self.image_similarity_scorer, "device"):
+            self.image_similarity_scorer.device = device
+        if hasattr(self.image_similarity_scorer, "to"):
+            try:
+                self.image_similarity_scorer.to(device)
+            except Exception:
+                pass
+        print(f"MedImageInsight device: {device}")
         self._image_embeddings = None
         self._dummy_image_b64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII="
         print("Loading BLEURT")
@@ -293,28 +303,17 @@ class CaptionEvaluator:
 
     def _encode_texts(self, texts):
         scorer = self.image_similarity_scorer
-        if hasattr(scorer, "encode_texts"):
-            outputs = scorer.encode_texts(texts=texts)
-            if isinstance(outputs, dict) and "text_embeddings" in outputs:
-                embeddings = outputs["text_embeddings"]
-            else:
-                embeddings = outputs
-            if hasattr(embeddings, "cpu"):
-                return embeddings.cpu().numpy()
-            return np.array(embeddings)
-        # Fallback: use encode with a lightweight dummy image to obtain text embeddings
-        outputs = scorer.encode(
-            images=[self._dummy_image_b64 for _ in texts],
-            texts=texts,
-        )
-        embeddings = outputs["text_embeddings"]
+        outputs = scorer.encode(texts=texts)
+        if isinstance(outputs, dict) and "text_embeddings" in outputs:
+            embeddings = outputs["text_embeddings"]
+        else:
+            embeddings = outputs
         if hasattr(embeddings, "cpu"):
             return embeddings.cpu().numpy()
         return np.array(embeddings)
 
     def compute_similarity(self, candidate_pairs):
         print("Computing MedImageInsights Similarity")
-        self.image_similarity_scorer.load_model()
         self._ensure_image_embeddings()
 
         missing = [

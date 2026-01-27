@@ -20,8 +20,8 @@ def _read_utf8(path: str) -> str:
         )
 
 
-def _load_ground_truth_ids(ground_truth_path: str) -> set:
-    ids = set()
+def _load_ground_truth_ids(ground_truth_path: str) -> list:
+    ids = []
     with open(ground_truth_path, "r", encoding="utf-8", newline="") as f:
         reader = csv.reader(f)
         header = next(reader, None)
@@ -34,7 +34,7 @@ def _load_ground_truth_ids(ground_truth_path: str) -> set:
             if not row:
                 # ignore blank lines in ground truth
                 continue
-            ids.add(row[id_idx].strip())
+            ids.append(row[id_idx].strip())
     return ids
 
 
@@ -68,7 +68,8 @@ def check_submission(
                 )
 
             seen_ids = set()
-            gt_ids = _load_ground_truth_ids(ground_truth_path)
+            gt_ids_list = _load_ground_truth_ids(ground_truth_path)
+            gt_ids = set(gt_ids_list)
             missing_in_submission = set(gt_ids)
 
             # Inspect raw lines for quoting rule when caption contains comma
@@ -86,23 +87,28 @@ def check_submission(
                     raise SubmissionFormatError(
                         f"Row {i}: ID has leading/trailing whitespace. Found: '{image_id}'."
                     )
-                if caption != caption.strip():
-                    raise SubmissionFormatError(
-                        f"Row {i}: Caption has leading/trailing whitespace. Found: '{caption}'."
-                    )
+                # Captions may include leading/trailing whitespace (allowed)
 
-                # Duplicate ID check
+                # Order + duplicate + membership checks
                 if image_id in seen_ids:
                     raise SubmissionFormatError(
                         f"Row {i}: Duplicate ID detected: {image_id}."
                     )
-                seen_ids.add(image_id)
-
-                # ID must be from official set
+                position = len(seen_ids)
+                if position >= len(gt_ids_list):
+                    raise SubmissionFormatError(
+                        f"Row {i}: Extra ID beyond ground truth length: {image_id}."
+                    )
+                expected_id = gt_ids_list[position]
+                if image_id != expected_id:
+                    raise SubmissionFormatError(
+                        f"Row {i}: ID order mismatch. Expected '{expected_id}' at position {position + 1}, found '{image_id}'."
+                    )
                 if image_id not in gt_ids:
                     raise SubmissionFormatError(
                         f"Row {i}: ID '{image_id}' not found in {dataset_type} ground truth set."
                     )
+                seen_ids.add(image_id)
                 if image_id in missing_in_submission:
                     missing_in_submission.remove(image_id)
 

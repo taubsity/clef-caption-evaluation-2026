@@ -20,8 +20,10 @@ def _read_utf8(path: str) -> str:
         )
 
 
-def _load_ground_truth_ids(primary_path: str, secondary_path: str) -> set:
-    ids = set()
+def _load_ground_truth_ids(primary_path: str, secondary_path: str) -> list:
+    # Order must follow primary concepts.csv; secondary adds IDs if present
+    ids = []
+    seen = set()
     for path in (primary_path, secondary_path):
         with open(path, "r", encoding="utf-8", newline="") as f:
             reader = csv.reader(f)
@@ -34,7 +36,10 @@ def _load_ground_truth_ids(primary_path: str, secondary_path: str) -> set:
             for row in reader:
                 if not row:
                     continue
-                ids.add(row[id_idx].strip())
+                _id = row[id_idx].strip()
+                if _id not in seen:
+                    ids.append(_id)
+                    seen.add(_id)
     return ids
 
 
@@ -69,7 +74,8 @@ def check_submission(
                 )
 
             seen_ids = set()
-            gt_ids = _load_ground_truth_ids(primary_gt_path, secondary_gt_path)
+            gt_ids_list = _load_ground_truth_ids(primary_gt_path, secondary_gt_path)
+            gt_ids = set(gt_ids_list)
             missing_in_submission = set(gt_ids)
 
             for i, row in enumerate(reader, start=2):
@@ -92,33 +98,42 @@ def check_submission(
                     raise SubmissionFormatError(
                         f"Row {i}: Duplicate ID detected: {image_id}."
                     )
-                seen_ids.add(image_id)
+                position = len(seen_ids)
+                if position >= len(gt_ids_list):
+                    raise SubmissionFormatError(
+                        f"Row {i}: Extra ID beyond ground truth length: {image_id}."
+                    )
+                expected_id = gt_ids_list[position]
+                if image_id != expected_id:
+                    raise SubmissionFormatError(
+                        f"Row {i}: ID order mismatch. Expected '{expected_id}' at position {position + 1}, found '{image_id}'."
+                    )
 
                 if image_id not in gt_ids:
                     raise SubmissionFormatError(
                         f"Row {i}: ID '{image_id}' not in {dataset_type} ground truth set."
                     )
+                seen_ids.add(image_id)
                 if image_id in missing_in_submission:
                     missing_in_submission.remove(image_id)
 
-                # CUIs must be ';' separated, no duplicates, and valid format
-                parts = [p.strip() for p in cuis_str.split(";")]
-                if any(len(p) == 0 for p in parts):
-                    raise SubmissionFormatError(
-                        f"Row {i}: Empty CUI detected (possible trailing ';' or consecutive separators)."
-                    )
-                # Validate format C + digits (len flexible)
-                invalid = [p for p in parts if not re.fullmatch(r"C\d+", p)]
-                if invalid:
-                    raise SubmissionFormatError(
-                        f"Row {i}: Invalid CUI format for entries: {invalid}. Expected 'C' followed by digits."
-                    )
-                # Duplicate CUIs on a line
-                if len(set(parts)) != len(parts):
-                    dupes = sorted([c for c in set(parts) if parts.count(c) > 1])
-                    raise SubmissionFormatError(
-                        f"Row {i}: Duplicate CUIs not allowed for an ID. Duplicates: {dupes}"
-                    )
+                # CUIs may be empty; otherwise must be ';' separated, no duplicates, and valid format
+                if cuis_str.strip():
+                    parts = [p.strip() for p in cuis_str.split(";")]
+                    if any(len(p) == 0 for p in parts):
+                        raise SubmissionFormatError(
+                            f"Row {i}: Empty CUI detected (possible trailing ';' or consecutive separators)."
+                        )
+                    invalid = [p for p in parts if not re.fullmatch(r"C\d+", p)]
+                    if invalid:
+                        raise SubmissionFormatError(
+                            f"Row {i}: Invalid CUI format for entries: {invalid}. Expected 'C' followed by digits."
+                        )
+                    if len(set(parts)) != len(parts):
+                        dupes = sorted([c for c in set(parts) if parts.count(c) > 1])
+                        raise SubmissionFormatError(
+                            f"Row {i}: Duplicate CUIs not allowed for an ID. Duplicates: {dupes}"
+                        )
 
             if missing_in_submission:
                 missing_count = len(missing_in_submission)

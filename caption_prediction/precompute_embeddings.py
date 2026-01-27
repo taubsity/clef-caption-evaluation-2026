@@ -5,6 +5,8 @@ import base64
 import numpy as np
 import torch
 import sys
+from typing import List
+from tqdm import tqdm
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -20,7 +22,7 @@ sys.path.insert(0, med_image_insights_dir)
 from medimageinsightmodel import MedImageInsight
 
 
-def load_image_ids(dataset_type: str):
+def load_image_ids(dataset_type: str) -> List[str]:
     gt_path = os.path.join(current_dir, f"data/{dataset_type}/captions.csv")
     image_ids = []
     with open(gt_path) as csvfile:
@@ -33,22 +35,41 @@ def load_image_ids(dataset_type: str):
     return image_ids
 
 
-def encode_dataset_images(dataset_type: str, scorer: MedImageInsight):
+def encode_batch(image_paths: List[str], scorer: MedImageInsight):
+    with open(image_paths[0], "rb") as f:
+        pass  # quick existence check to surface early errors
+
+    images = []
+    for p in image_paths:
+        if not os.path.exists(p):
+            raise FileNotFoundError(f"Image file not found: {p}")
+        with open(p, "rb") as f:
+            images.append(base64.b64encode(f.read()).decode("utf-8"))
+
+    with torch.inference_mode():
+        outputs = scorer.encode(images=images)
+        image_vecs = outputs["image_embeddings"]
+        if hasattr(image_vecs, "detach"):
+            image_vecs = image_vecs.detach().cpu().numpy()
+    return image_vecs
+
+
+def encode_dataset_images(
+    dataset_type: str, scorer: MedImageInsight, batch_size: int = 16
+):
     image_dir = os.path.join(current_dir, f"data/{dataset_type}/images")
     image_ids = load_image_ids(dataset_type)
     embeddings = {}
-    for image_id in image_ids:
-        image_path = os.path.join(image_dir, image_id + ".jpg")
-        if not os.path.exists(image_path):
-            raise FileNotFoundError(f"Image file not found: {image_path}")
-        with open(image_path, "rb") as f:
-            image_b64 = base64.b64encode(f.read()).decode("utf-8")
-        with torch.no_grad():
-            outputs = scorer.encode(images=[image_b64], texts=[""])
-            image_vec = outputs["image_embeddings"][0]
-            if hasattr(image_vec, "detach"):
-                image_vec = image_vec.detach().cpu().numpy()
-            embeddings[image_id] = image_vec
+
+    for start in tqdm(range(0, len(image_ids), batch_size), desc=f"Encoding {dataset_type}"):
+        batch_ids = image_ids[start : start + batch_size]
+        batch_paths = [
+            os.path.join(image_dir, image_id + ".jpg") for image_id in batch_ids
+        ]
+        image_vecs = encode_batch(batch_paths, scorer)
+        for image_id, vec in zip(batch_ids, image_vecs):
+            embeddings[image_id] = vec
+
     return embeddings
 
 
@@ -62,12 +83,21 @@ def save_embeddings(dataset_type: str, embeddings):
 
 
 def main():
+    device = "cuda" if torch.cuda.is_available() else "cpu"
     scorer = MedImageInsight(
         model_dir=os.path.join(current_dir, "MedImageInsights/2024.09.27"),
         vision_model_name="medimageinsigt-v1.0.0.pt",
         language_model_name="language_model.pth",
     )
     scorer.load_model()
+    if hasattr(scorer, "device"):
+        scorer.device = device
+    if hasattr(scorer, "to"):
+        try:
+            scorer.to(device)
+        except Exception:
+            pass
+    print(f"MedImageInsight device: {device}")
 
     for dataset in ["valid", "test"]:
         print(f"Precomputing embeddings for {dataset}...")
