@@ -1,5 +1,5 @@
 # Use an official Python runtime as base image
-FROM python:3.11-slim
+FROM nvidia/cuda:12.6.1-cudnn-runtime-ubuntu22.04
 
 # Set environment variables
 ENV TOKENIZERS_PARALLELISM=false
@@ -47,7 +47,7 @@ RUN git clone https://github.com/yuh-zha/AlignScore.git && \
 # Copy the requirements file and install dependencies
 COPY requirements.txt .
 RUN python3 -m pip install --no-cache-dir -r requirements.txt
-RUN python -c "import nltk; nltk.download('punkt_tab')"
+RUN python3 -c "import nltk; nltk.download('punkt_tab')"
 
 # Ensure compatible torch/torchvision versions for MedImageInsights
 RUN python3 -m pip install --no-cache-dir torch==2.1.2 torchvision==0.16.2
@@ -63,4 +63,4 @@ COPY models/MedCAT models/MedCAT
 COPY data/ data/
 
 # Precompute image embeddings for valid and test datasets
-RUN python precompute_embeddings.py
+RUN python3 precompute_embeddings.py

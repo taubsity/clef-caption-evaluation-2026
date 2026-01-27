@@ -55,7 +55,7 @@ def encode_batch(image_paths: List[str], scorer: MedImageInsight):
 
 
 def encode_dataset_images(
-    dataset_type: str, scorer: MedImageInsight, batch_size: int = 16
+    dataset_type: str, scorer: MedImageInsight, batch_size: int = 32
 ):
     image_dir = os.path.join(current_dir, f"data/{dataset_type}/images")
     image_ids = load_image_ids(dataset_type)
@@ -84,6 +84,7 @@ def save_embeddings(dataset_type: str, embeddings):
 
 def main():
     device = "cuda" if torch.cuda.is_available() else "cpu"
+    assert device == "cuda", "GPU is required for MedImageInsight model."
     scorer = MedImageInsight(
         model_dir=os.path.join(current_dir, "MedImageInsights/2024.09.27"),
         vision_model_name="medimageinsigt-v1.0.0.pt",
