@@ -378,7 +378,7 @@ class CaptionEvaluator:
 
     def compute_bleurt(self, candidate_pairs):
         print("Computing BLEURT")
-        if self.bleurt_model is None:
+        if self.bleurt_model is None or self.bleurt_tokenizer is None:
             self.bleurt_config = BleurtConfig.from_pretrained(
                 "lucadiliello/BLEURT-20-D12"
             )
