@@ -14,8 +14,9 @@ COPY run_evaluation.py .
 COPY precompute_embeddings.py .
 COPY submission_check.py .
 
-# Set the entry point to the evaluation script can be run with valid or test
+# Set the entry point to the evaluation script
 ENTRYPOINT ["python3", "run_evaluation.py"]
+CMD ["test"]
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -63,7 +64,7 @@ COPY medcat_scorer.py .
 COPY models/MedCAT models/MedCAT
 
 # Copy data files (ground truth)
-COPY data/ data/
+COPY data/test data/test
 
 COPY precomputed/ precomputed/
 

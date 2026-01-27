@@ -21,23 +21,25 @@ You need docker to run the evaluations with GPU support for caption prediction e
 1. Copy `captions.csv` and `images` dir into `caption_prediction/data/valid`.
    
 2. Request a licence for UMLS and then download the UMLS full model (zip file) from https://uts.nlm.nih.gov/uts/login?service=https://medcat.rosalind.kcl.ac.uk/auth-callback into `caption_prediction/models/MedCAT`.
-
-3. Copy `data` dir into `caption_prediction`.
    
-3. Choose device (GPU) or use all and build the `caption_prediction_evaluator` docker image. This may take a while, as image embeddings will be precomputed.
+3. Choose device (GPU) or use `--gpus all`, build the `caption_prediction_evaluator` docker image and precompute the image embeddings once. This may take a while.
 
     ```sh
     cd caption_prediction
-    CUDA_VISIBLE_DEVICES=4 docker build --no-cache -t caption_prediction_evaluator .
+    docker build --no-cache -f Dockerfile.dev -t caption_prediction_evaluator .
+    docker run --rm --gpus '"device=4"' \
+      -v "$(pwd)/precomputed:/app/precomputed" \
+      caption_prediction_evaluator \
+      python3 precompute_embeddings.py --dataset valid
+    docker build --no-cache -f Dockerfile.valid -t caption_prediction_evaluator .
     ```
-4. Go to dir with your `submission.csv`, choose device (GPU) or put all and run the evaluation. The container will first run a strict submission format pre-check and print errors if any issues are found.
+4. Go to dir with your `submission.csv`, choose device (GPU) or use `--gpus all` and run the evaluation. The container will first run a submission format pre-check and print errors if any issues are found.
     ```sh
     docker run \
       --gpus '"device=4"' \
       --rm \
       -v $(pwd)/submission.csv:/app/submission.csv \
-      caption_prediction_evaluator \
-      valid
+      caption_prediction_evaluator
     ```
    Submission format: `submission.csv` with the two columns **ID** and **Caption**.
 
@@ -67,10 +69,10 @@ You need docker to run the evaluations with GPU support for caption prediction e
 
     ```sh
     cd concept_detection
-    docker build --no-cache -t concept_detection_evaluator .
+    docker build --no-cache -f Dockerfile.valid -t concept_detection_evaluator .
     ```
 
-3. Go to dir with your `submission.csv` and run evaluation. The container will first run a strict submission format pre-check and print errors if any issues are found.
+3. Go to dir with your `submission.csv` and run evaluation. The container will first run a submission format pre-check and print errors if any issues are found.
 
     ```sh
     docker run \

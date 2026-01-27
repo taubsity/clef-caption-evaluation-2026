@@ -7,6 +7,7 @@ import torch
 import sys
 from typing import List
 from tqdm import tqdm
+import argparse
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -83,6 +84,19 @@ def save_embeddings(dataset_type: str, embeddings):
 
 
 def main():
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="Precompute image embeddings for a dataset."
+    )
+    parser.add_argument(
+        "--dataset",
+        choices=["valid", "test"],
+        default="valid",
+        help="Dataset to precompute embeddings for (default: valid).",
+    )
+    args = parser.parse_args()
+
     device = "cuda" if torch.cuda.is_available() else "cpu"
     assert device == "cuda", "GPU is required for MedImageInsight model."
     scorer = MedImageInsight(
@@ -100,10 +114,9 @@ def main():
             pass
     print(f"MedImageInsight device: {device}")
 
-    for dataset in ["valid", "test"]:
-        print(f"Precomputing embeddings for {dataset}...")
-        embeddings = encode_dataset_images(dataset, scorer)
-        save_embeddings(dataset, embeddings)
+    print(f"Precomputing embeddings for {args.dataset}...")
+    embeddings = encode_dataset_images(args.dataset, scorer)
+    save_embeddings(args.dataset, embeddings)
 
 
 if __name__ == "__main__":

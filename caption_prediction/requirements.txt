@@ -3,11 +3,11 @@ evaluate
 rouge-score
 bert-score
 absl-py
-medcat
+medcat<2.0
 transformers==4.49
-evaluate
 nltk
 torch==2.1.2
 torchvision==0.16.2
+matplotlib>=3.8
 git+https://github.com/lucadiliello/bleurt-pytorch.git
 hf_xet

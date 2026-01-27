@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import sys
 import os
+import json
 import traceback
 from evaluator import CaptionEvaluator
 from submission_check import check_submission, SubmissionFormatError
@@ -58,6 +59,14 @@ def main():
     result = caption_evaluator._evaluate(_client_payload, _context)
     print(f"\nEvaluation complete for {dataset_type} dataset!")
     print(result)
+    
+    # Write scores.json for AI4MediaBench platform
+    scores_output_path = os.path.join("/app/output", "scores.json")
+    # create output directory if it doesn't exist
+    os.makedirs(os.path.dirname(scores_output_path), exist_ok=True)
+    with open(scores_output_path, "w") as f:
+        json.dump(result, f, indent=2)
+    print(f"\nScores written to {scores_output_path}")
 
 
 if __name__ == "__main__":
