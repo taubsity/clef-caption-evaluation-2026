@@ -300,7 +300,8 @@ class CaptionEvaluator:
             range(0, len(texts), batch_size), desc="Encode captions", unit="batch"
         ):
             batch = texts[start : start + batch_size]
-            outputs = scorer.encode(texts=batch)
+            with torch.inference_mode():
+                outputs = scorer.encode(texts=batch)
             if isinstance(outputs, dict) and "text_embeddings" in outputs:
                 embeddings = outputs["text_embeddings"]
             else:
@@ -397,23 +398,35 @@ class CaptionEvaluator:
             for image_key in candidate_pairs
         ]
         self.bleurt_model.eval()
-        with torch.no_grad():
-            inputs = self.bleurt_tokenizer(
-                references,
-                candidates,
-                padding="longest",
-                return_tensors="pt",
-                truncation=True,
-                max_length=512,
-            )
-            inputs = {k: v.to(self.device) for k, v in inputs.items()}
-            res = self.bleurt_model(**inputs).logits.flatten().tolist()
-        if self.device == "cuda":
+        scores = []
+        bs = max(1, self.text_batch_size)
+        for start in tqdm(
+            range(0, len(references), bs), desc="BLEURT batches", unit="batch"
+        ):
+            refs = references[start : start + bs]
+            cands = candidates[start : start + bs]
+            with torch.inference_mode():
+                inputs = self.bleurt_tokenizer(
+                    refs,
+                    cands,
+                    padding="longest",
+                    return_tensors="pt",
+                    truncation=True,
+                    max_length=512,
+                )
+                inputs = {k: v.to(self.device) for k, v in inputs.items()}
+                batch_scores = (
+                    self.bleurt_model(**inputs).logits.flatten().cpu().tolist()
+                )
+            scores.extend(batch_scores)
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+        if torch.cuda.is_available() and self.device == "cuda":
             self.bleurt_model = None
             self.bleurt_tokenizer = None
             self.bleurt_config = None
             self._free_cuda()
-        return np.mean(res)
+        return np.mean(scores)
 
     def _free_cuda(self):
         if torch.cuda.is_available():
