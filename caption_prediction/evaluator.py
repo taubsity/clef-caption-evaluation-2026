@@ -91,7 +91,7 @@ class CaptionEvaluator:
         medcats = self.compute_medcats(predictions)
         print("Medcats:", medcats)
 
-        relevance = np.mean([bertscore, rouge, sim])
+        relevance = np.mean([bertscore, rouge, sim, bleurt])
         factuality = np.mean([medcats, alignscore])
 
         _result_object = {

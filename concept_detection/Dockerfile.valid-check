@@ -1,0 +1,31 @@
+# Use an official Python runtime as base image
+FROM python:3.11-slim
+
+# Set environment variables
+ENV TOKENIZERS_PARALLELISM=false
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUNBUFFERED=1
+
+# Set working directory inside the container
+WORKDIR /app
+
+ENTRYPOINT ["python", "submission_check.py"]
+CMD ["--submission", "/app/submission.csv", "--primary-gt", "/app/data/valid/ids.csv", "--secondary-gt", "/app/data/valid/ids.csv", "--dataset", "valid"]
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    git \
+    wget \
+    curl \
+    unzip \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy the requirements file and install dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy runner and submission checker
+COPY submission_check.py .
+
+# Copy data files (ground truth)
+COPY data/valid/ids.csv data/valid/ids.csv
