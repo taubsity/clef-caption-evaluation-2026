@@ -287,7 +287,7 @@ class CaptionEvaluator:
         )
         if not os.path.exists(cache_path):
             raise Exception(
-                f"Precomputed image embeddings not found at {cache_path}. Rebuild the image to generate them."
+                f"Precomputed image embeddings not found at {cache_path}."
             )
         data = np.load(cache_path)
         self._image_embeddings = {k: data[k] for k in data.files}

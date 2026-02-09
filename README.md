@@ -22,7 +22,7 @@ You need docker to run the evaluations with GPU support for caption prediction e
    
 2. Request a licence for UMLS and then download the UMLS full model (zip file) from https://uts.nlm.nih.gov/uts/login?service=https://medcat.rosalind.kcl.ac.uk/auth-callback into `caption_prediction/models/MedCAT`.
    
-3. Choose device (GPU) or use `--gpus all`, build the `caption_prediction_evaluator` docker image and precompute the image embeddings once. This may take a while.
+3. Choose device (GPU) or use `--gpus all`, precompute the image embeddings once, and build the `caption_prediction_evaluator` docker image. This may take a while.
 
     ```sh
     cd caption_prediction
@@ -145,26 +145,39 @@ This is how the file structure would look like with UMLS model and submission.cs
 ├── README.md
 ├── caption_prediction
 │   ├── Dockerfile
+│   ├── Dockerfile.dev
+│   ├── Dockerfile.test
+│   ├── Dockerfile.test-check
+│   ├── Dockerfile.valid
+│   ├── Dockerfile.valid-check
+│   ├── create_ids_csv.py
 │   ├── data
+│   │   ├── test
 │   │   └── valid
-│   │       ├── captions.csv
-│   │       └── images
 │   ├── evaluator.py
 │   ├── medcat_scorer.py
 │   ├── models
 │   │   └── MedCAT
-│   │       └── umls_self_train_model_pt2ch_3760d588371755d0.zip
+│   ├── precompute_embeddings.py
+│   ├── precomputed
+│   │   └── image_embeddings_valid.npz
 │   ├── requirements.txt
-|   └── submission.csv
+│   ├── run_evaluation.py
+│   └── submission_check.py
 └── concept_detection
     ├── Dockerfile
+    ├── Dockerfile.test
+    ├── Dockerfile.test-check
+    ├── Dockerfile.valid
+    ├── Dockerfile.valid-check
+    ├── create_ids_csv.py
     ├── data
+    │   ├── test
     │   └── valid
-    │       ├── concepts.csv
-    │       └── concepts_manual.csv
     ├── evaluator.py
     ├── requirements.txt
-    └── submission.csv
+    ├── run_evaluation.py
+    └── submission_check.py
 ```
 
 ## Submission Format Instructions
