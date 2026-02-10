@@ -16,10 +16,10 @@ from bleurt_pytorch import (
     BleurtTokenizer,
 )
 
-current_dir = os.path.dirname(os.path.abspath(__file__))
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Construct paths to the module directories
-med_image_insights_dir = os.path.join(current_dir, "MedImageInsights")
+med_image_insights_dir = os.path.join(CURRENT_DIR, "MedImageInsights")
 
 # check if the directory exist
 if not os.path.exists(med_image_insights_dir):
@@ -52,7 +52,8 @@ class CaptionEvaluator:
         print("Loading MedCatScorer")
         self.medcat_scorer = MedCatScorer(
             model_path=os.path.join(
-                current_dir,
+                CURRENT_DIR
+            ,
                 [
                     os.path.join("models/MedCAT", filename)
                     for filename in os.listdir("models/MedCAT")
@@ -246,7 +247,8 @@ class CaptionEvaluator:
             batch_size=32,
             device=self.device,
             ckpt_path=os.path.join(
-                current_dir, "models/AlignScore/AlignScore-base.ckpt"
+                CURRENT_DIR
+            , "models/AlignScore/AlignScore-base.ckpt"
             ),
             evaluation_mode="nli_sp",
             verbose=False,
@@ -283,7 +285,8 @@ class CaptionEvaluator:
         if self._image_embeddings is not None:
             return
         cache_path = os.path.join(
-            current_dir, "precomputed", f"image_embeddings_{self.dataset_type}.npz"
+            CURRENT_DIR
+        , "precomputed", f"image_embeddings_{self.dataset_type}.npz"
         )
         if not os.path.exists(cache_path):
             raise Exception(
@@ -362,7 +365,8 @@ class CaptionEvaluator:
         device = self.device
         print("Loading MedImageInsight")
         scorer = MedImageInsight(
-            model_dir=os.path.join(current_dir, "MedImageInsights/2024.09.27"),
+            model_dir=os.path.join(CURRENT_DIR
+        , "MedImageInsights/2024.09.27"),
             vision_model_name="medimageinsigt-v1.0.0.pt",
             language_model_name="language_model.pth",
         )
@@ -445,7 +449,8 @@ if __name__ == "__main__":
             sys.exit(1)
 
     print(f"Running evaluator for {dataset_type} dataset...")
-    ground_truth_path = os.path.join(current_dir, f"data/{dataset_type}/captions.csv")
+    ground_truth_path = os.path.join(CURRENT_DIR
+, f"data/{dataset_type}/captions.csv")
     submission_file_path = f"/app/data/{dataset_type}/submission.csv"
 
     if not os.path.exists(ground_truth_path):

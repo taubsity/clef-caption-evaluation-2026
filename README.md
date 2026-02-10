@@ -120,7 +120,6 @@ python concept_detection/submission_check.py \
   --submission /path/to/submission.csv \
   --dataset valid \
   --primary-gt concept_detection/data/valid/concepts.csv \
-  --secondary-gt concept_detection/data/valid/concepts_manual.csv
 ```
 
 Arguments:
