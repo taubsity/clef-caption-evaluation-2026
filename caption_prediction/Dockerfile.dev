@@ -64,7 +64,7 @@ COPY medcat_scorer.py .
 COPY models/MedCAT models/MedCAT
 
 # Copy data files (ground truth)
-COPY data/valid data/valid
+COPY data/ data/
 
 # COPY precomputed/ precomputed/
 

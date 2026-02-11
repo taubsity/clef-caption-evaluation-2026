@@ -27,7 +27,7 @@ You need docker to run the evaluations with GPU support for caption prediction e
     ```sh
     cd caption_prediction
     docker build --no-cache -f Dockerfile.dev -t caption_prediction_evaluator .
-    docker run --rm --gpus '"device=4"' \
+    docker run --rm --gpus '"device=3"' \
       -v "$(pwd)/precomputed:/app/precomputed" \
       caption_prediction_evaluator \
       python3 precompute_embeddings.py --dataset valid
@@ -125,7 +125,7 @@ python concept_detection/submission_check.py \
 Arguments:
 - `--submission` (required): path to your submission.csv
 - `--dataset` (optional): valid|test (default: valid) to auto-pick default ground truth paths
-- `--ground-truth`, `--primary-gt`, `--secondary-gt` (optional): override ground truth locations if needed
+- `--ground-truth`, `--primary-gt`: override ground truth locations if needed
 
 
 ## Notes & Troubleshooting
@@ -152,13 +152,23 @@ This is how the file structure would look like with UMLS model and submission.cs
 │   ├── create_ids_csv.py
 │   ├── data
 │   │   ├── test
+│   │   │   ├── captions.csv
+│   │   │   ├── ids.csv
+│   │   │   └── images
+│   │   ├── train
+│   │   │   └── captions.csv
 │   │   └── valid
+│   │       ├── captions.csv
+│   │       ├── ids.csv
+│   │       └── images
 │   ├── evaluator.py
 │   ├── medcat_scorer.py
 │   ├── models
 │   │   └── MedCAT
+│   │       └── umls_self_train_model_pt2ch_3760d588371755d0.zip
 │   ├── precompute_embeddings.py
 │   ├── precomputed
+│   │   ├── image_embeddings_test.npz
 │   │   └── image_embeddings_valid.npz
 │   ├── requirements.txt
 │   ├── run_evaluation.py
@@ -172,7 +182,16 @@ This is how the file structure would look like with UMLS model and submission.cs
     ├── create_ids_csv.py
     ├── data
     │   ├── test
+    │   │   ├── concepts.csv
+    │   │   ├── concepts_manual.csv
+    │   │   └── ids.csv
+    │   ├── train
+    │   │   ├── concepts.csv
+    │   │   └── concepts_manual.csv
     │   └── valid
+    │       ├── concepts.csv
+    │       ├── concepts_manual.csv
+    │       └── ids.csv
     ├── evaluator.py
     ├── requirements.txt
     ├── run_evaluation.py
